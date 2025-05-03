@@ -46,6 +46,7 @@ shader_set :: proc {
 	shader_set_vec2,
 	shader_set_vec3,
 	shader_set_vec4,
+	shader_set_mat_4x4f,
 }
 
 shader_set_bool :: proc "contextless" (shader: ^Shader, uniform: string, b: bool) {
@@ -84,17 +85,18 @@ shader_set_4_float :: proc "contextless" (shader: ^Shader, uniform: string, i0, 
 	gl.Uniform4f(shader.uniforms[uniform].location, i0, i1, i3, i4)
 }
 
-shader_set_vec2 :: proc "contextless" (shader: ^Shader, uniform: string, vec: Vec2) {
-	v := vec
-	gl.Uniform2fv(shader.uniforms[uniform].location, 1, raw_data(&v))
+shader_set_vec2 :: proc "contextless" (shader: ^Shader, uniform: string, vec: ^[2]f32) {
+	gl.Uniform2fv(shader.uniforms[uniform].location, 1, raw_data(vec))
 }
 
-shader_set_vec3 :: proc "contextless" (shader: ^Shader, uniform: string, vec: Vec3) {
-	v := vec
-	gl.Uniform3fv(shader.uniforms[uniform].location, 1, raw_data(&v))
+shader_set_vec3 :: proc "contextless" (shader: ^Shader, uniform: string, vec: ^[3]f32) {
+	gl.Uniform3fv(shader.uniforms[uniform].location, 1, raw_data(vec))
 }
 
-shader_set_vec4 :: proc "contextless" (shader: ^Shader, uniform: string, vec: [4]f32) {
-	v := vec
-	gl.Uniform4fv(shader.uniforms[uniform].location, 1, raw_data(&v))
+shader_set_vec4 :: proc "contextless" (shader: ^Shader, uniform: string, vec: ^[4]f32) {
+	gl.Uniform4fv(shader.uniforms[uniform].location, 1, raw_data(vec))
+}
+
+shader_set_mat_4x4f :: proc "contextless" (s: ^Shader, uniform: string, mat: ^matrix[4, 4]f32) {
+	gl.UniformMatrix4fv(s.uniforms[uniform].location, 1, gl.FALSE, raw_data(mat))
 }
