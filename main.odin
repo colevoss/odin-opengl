@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:math"
+import glm "core:math/linalg"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
 
@@ -10,6 +11,7 @@ Vec3 :: [3]f32
 Vec4 :: [4]f32
 
 main :: proc() {
+	using glm
 	window := Window {
 		width  = 800,
 		height = 600,
@@ -56,6 +58,15 @@ main :: proc() {
   }
   // odinfmt: enable
 
+
+	v := glm.Vector3f32{1, 0, 0}
+
+	// first scaling
+	// then rotations
+	// last translation
+
+	fmt.printfln("d: %v", v)
+
 	vbo: VBO
 	vbo.vertices = vertices
 	vbo_init(&vbo)
@@ -74,7 +85,6 @@ main :: proc() {
 		{index = 2, size = 2, type = .Float, normalized = false, stride = 8, offset = 6}, // color
 	}
 	vao_init(&vao)
-	//vao_bind(&vao)
 
 	shader: Shader
 
@@ -85,7 +95,6 @@ main :: proc() {
 
 	// polygon mode
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-
 	for window_run(&window) {
 		// INPUT
 		if glfw.GetKey(window.handle, glfw.KEY_ESCAPE) == glfw.PRESS {
@@ -96,6 +105,12 @@ main :: proc() {
 		green := (math.sin(time) / 2.0) + 0.5
 		mix := math.sin(time) / 2.0 + 0.5
 
+		trans := glm.MATRIX4F32_IDENTITY
+
+		trans = matrix4_scale_f32(glm.Vector3f32{0.5, 0.5, 0.5}) * trans
+		trans = matrix4_translate(Vector3f32{0.5, -0.5, 0.0}) * trans
+		trans = matrix4_rotate(f32(time / 2), Vector3f32{0, 0, 1}) * trans
+
 		// Draw
 		window_clear(clear_color)
 
@@ -103,6 +118,7 @@ main :: proc() {
 		shader_set(&shader, "ourColor", &Vec4{0.4, f32(green), 0.0, 1.0})
 		shader_set(&shader, "texture1", 0)
 		shader_set(&shader, "texture2", 1)
+		shader_set(&shader, "transform", &trans)
 		shader_set_1_float(&shader, "myMix", f32(mix))
 
 		gl.ActiveTexture(gl.TEXTURE0)
