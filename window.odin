@@ -64,5 +64,5 @@ window_destory :: proc(w: ^Window) {
 
 window_clear :: proc(color: Vec4) {
 	gl.ClearColor(color.r, color.g, color.b, color.a)
-	gl.Clear(gl.COLOR_BUFFER_BIT)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }

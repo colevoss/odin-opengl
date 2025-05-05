@@ -11,7 +11,6 @@ Vec3 :: [3]f32
 Vec4 :: [4]f32
 
 main :: proc() {
-	using glm
 	window := Window {
 		width  = 800,
 		height = 600,
@@ -33,42 +32,24 @@ main :: proc() {
 	texture_load(&tex2, "./textures/wood.jpg")
 
 	clear_color := Vec4{0.5, 0.0, 1.0, 1.0}
-	
-  // odinfmt: disable
-  vertices := []f32{
-    // 0.5,  0.5, 0.0,  // top right
-    // 0.5, -0.5, 0.0,  // bottom right
-    //-0.5, -0.5, 0.0,  // bottom let
-    //-0.5,  0.5, 0.0   // top let }
 
+	cubePositions := []glm.Vector3f32 {
+		{0.0, 0.0, 0.0},
+		{2.0, 5.0, -15.0},
+		{-1.5, -2.2, -2.5},
+		{-3.8, -2.0, -12.3},
+		{2.4, -0.4, -3.5},
+		{-1.7, 3.0, -7.5},
+		{1.3, -2.0, -2.5},
+		{1.5, 2.0, -2.5},
+		{1.5, 0.2, -1.5},
+		{-1.3, 1.0, -1.5},
+	}
 
-
-    // positions         // colors
-    // 0.5, -0.5, 0.0,  1.0, 0.0, 0.0,   // bottom right
-    //-0.5, -0.5, 0.0,  0.0, 1.0, 0.0,   // bottom let
-    // .0,  0.5, 0.0,   0.0, 0.0, 1.0    // top
-
-
-
-    // positions          // colors           // texture coords
-     0.5,  0.5, 0.0,   1.0, 0.0, 0.0,   1.0, 1.0,   // top right
-     0.5, -0.5, 0.0,   0.0, 1.0, 0.0,   1.0, 0.0,   // bottom right
-    -0.5, -0.5, 0.0,   0.0, 0.0, 1.0,   0.0, 0.0,   // bottom let
-    -0.5,  0.5, 0.0,   1.0, 1.0, 0.0,   0.0, 1.0    // top let
-  }
-  // odinfmt: enable
-
-
-	v := glm.Vector3f32{1, 0, 0}
-
-	// first scaling
-	// then rotations
-	// last translation
-
-	fmt.printfln("d: %v", v)
 
 	vbo: VBO
-	vbo.vertices = vertices
+	vbo.vertices = cube
+	//vbo.vertices = vertices
 	vbo_init(&vbo)
 
 	ebo: EBO
@@ -80,9 +61,10 @@ main :: proc() {
 	vao.vbo = &vbo
 	vao.ebo = &ebo
 	vao.attributes = {
-		{index = 0, size = 3, type = .Float, normalized = false, stride = 8, offset = 0}, // position
-		{index = 1, size = 3, type = .Float, normalized = false, stride = 8, offset = 3}, // color
-		{index = 2, size = 2, type = .Float, normalized = false, stride = 8, offset = 6}, // color
+		{index = 0, size = 3, type = .Float, normalized = false, stride = 5, offset = 0}, // position
+		{index = 1, size = 2, type = .Float, normalized = false, stride = 5, offset = 3}, // color
+		//{index = 1, size = 3, type = .Float, normalized = false, stride = 8, offset = 3}, // color
+		//{index = 2, size = 2, type = .Float, normalized = false, stride = 5, offset = 3}, // color
 	}
 	vao_init(&vao)
 
@@ -93,6 +75,16 @@ main :: proc() {
 		return
 	}
 
+	//model = glm.matrix4_rotate_f32(glm.to_radians(f32(-55)), Vec3{1, 0, 0}) * model
+
+	view := glm.MATRIX4F32_IDENTITY
+	// note that we translate the scene inverse to the direction we want to move
+	view = glm.matrix4_translate_f32(glm.Vector3f32{0, 0, -3})
+
+	projection := glm.matrix4_perspective_f32(glm.to_radians(f32(45)), 800 / 600, 0.1, 1000)
+
+	gl.Enable(gl.DEPTH_TEST)
+
 	// polygon mode
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 	for window_run(&window) {
@@ -102,24 +94,20 @@ main :: proc() {
 		}
 
 		time := glfw.GetTime()
-		green := (math.sin(time) / 2.0) + 0.5
-		mix := math.sin(time) / 2.0 + 0.5
 
-		trans := glm.MATRIX4F32_IDENTITY
-
-		trans = matrix4_scale_f32(glm.Vector3f32{0.5, 0.5, 0.5}) * trans
-		trans = matrix4_translate(Vector3f32{0.5, -0.5, 0.0}) * trans
-		trans = matrix4_rotate(f32(time / 2), Vector3f32{0, 0, 1}) * trans
 
 		// Draw
 		window_clear(clear_color)
 
 		shader_use(&shader)
-		shader_set(&shader, "ourColor", &Vec4{0.4, f32(green), 0.0, 1.0})
-		shader_set(&shader, "texture1", 0)
-		shader_set(&shader, "texture2", 1)
-		shader_set(&shader, "transform", &trans)
-		shader_set_1_float(&shader, "myMix", f32(mix))
+
+		//shader_set(&shader, "texture1", 0)
+		//shader_set(&shader, "texture2", 1)
+		shader_set(&shader, "view", &view)
+		shader_set(&shader, "projection", &projection)
+
+
+		// shader_set_1_float(&shader, "myMix", f32(mix))
 
 		gl.ActiveTexture(gl.TEXTURE0)
 		texture_bind_2d(&tex1)
@@ -128,7 +116,19 @@ main :: proc() {
 		texture_bind_2d(&tex2)
 
 		vao_bind(&vao)
-		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+
+
+		for c, i in cubePositions {
+			model := glm.MATRIX4F32_IDENTITY
+			model =
+				glm.matrix4_rotate_f32(glm.to_radians(f32(time * 10)), Vec3{1, 0.3, 0.5}) * model
+			model = glm.matrix4_translate_f32(c) * model
+			shader_set(&shader, "model", &model)
+			gl.DrawArrays(gl.TRIANGLES, 0, 36)
+		}
+
+		//gl.DrawElements(gl.TRIANGLES, 36, gl.UNSIGNED_INT, nil)
+		//gl.DrawArrays(gl.TRIANGLES, 0, 36)
 
 		// PREPARE NEXT FRAME
 		glfw.PollEvents()
