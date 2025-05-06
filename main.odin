@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:math"
 import glm "core:math/linalg"
+import "core:os"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
 
@@ -22,6 +23,10 @@ main :: proc() {
 	}
 
 	defer window_destory(&window)
+
+	ctx: Context
+	context_init(&ctx, window)
+	//ctx.window = window
 
 	tex1: Texture
 	texture_init(&tex1)
@@ -54,7 +59,6 @@ main :: proc() {
 
 	ebo: EBO
 	ebo.indices = []u32{0, 1, 3, 1, 2, 3}
-	//ebo.indices = []u32{0, 1, 2}
 	ebo_init(&ebo)
 
 	vao: VAO
@@ -62,9 +66,7 @@ main :: proc() {
 	vao.ebo = &ebo
 	vao.attributes = {
 		{index = 0, size = 3, type = .Float, normalized = false, stride = 5, offset = 0}, // position
-		{index = 1, size = 2, type = .Float, normalized = false, stride = 5, offset = 3}, // color
-		//{index = 1, size = 3, type = .Float, normalized = false, stride = 8, offset = 3}, // color
-		//{index = 2, size = 2, type = .Float, normalized = false, stride = 5, offset = 3}, // color
+		{index = 1, size = 2, type = .Float, normalized = false, stride = 5, offset = 3}, // tex
 	}
 	vao_init(&vao)
 
@@ -75,39 +77,53 @@ main :: proc() {
 		return
 	}
 
-	//model = glm.matrix4_rotate_f32(glm.to_radians(f32(-55)), Vec3{1, 0, 0}) * model
-
 	view := glm.MATRIX4F32_IDENTITY
-	// note that we translate the scene inverse to the direction we want to move
-	view = glm.matrix4_translate_f32(glm.Vector3f32{0, 0, -3})
-
 	projection := glm.matrix4_perspective_f32(glm.to_radians(f32(45)), 800 / 600, 0.1, 1000)
 
 	gl.Enable(gl.DEPTH_TEST)
 
+	camera: Camera
+	camera.pos = Vec3{0, 0, 3}
+	camera.sensitivity = 0.3
+	camera.pitch = 300 * 0.3
+	camera.yaw = 400 * 0.3
+	camera_init(&camera)
+	//camera_look_at(&camera, Vec3{0, 0, 0})
+
 	// polygon mode
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 	for window_run(&window) {
+		context_update(&ctx)
+		camera_update(&camera, ctx.input.mouse.delta)
+
 		// INPUT
 		if glfw.GetKey(window.handle, glfw.KEY_ESCAPE) == glfw.PRESS {
 			glfw.SetWindowShouldClose(window.handle, true)
 		}
+		if glfw.GetKey(window.handle, glfw.KEY_W) == glfw.PRESS {
+			camera.pos += ctx.delta * camera.front
+		}
+		if glfw.GetKey(window.handle, glfw.KEY_S) == glfw.PRESS {
+			camera.pos -= ctx.delta * camera.front
+		}
+		if glfw.GetKey(window.handle, glfw.KEY_A) == glfw.PRESS {
+			camera.pos -= glm.vector_normalize(glm.cross(camera.front, camera.up)) * ctx.delta
+		}
+		if glfw.GetKey(window.handle, glfw.KEY_D) == glfw.PRESS {
+			camera.pos += glm.vector_normalize(glm.cross(camera.front, camera.up)) * ctx.delta
+		}
 
-		time := glfw.GetTime()
+		//camera.pos.y = 0
 
+		view = camera_view(&camera)
 
 		// Draw
 		window_clear(clear_color)
 
 		shader_use(&shader)
 
-		//shader_set(&shader, "texture1", 0)
-		//shader_set(&shader, "texture2", 1)
 		shader_set(&shader, "view", &view)
 		shader_set(&shader, "projection", &projection)
-
-
-		// shader_set_1_float(&shader, "myMix", f32(mix))
 
 		gl.ActiveTexture(gl.TEXTURE0)
 		texture_bind_2d(&tex1)
@@ -117,11 +133,9 @@ main :: proc() {
 
 		vao_bind(&vao)
 
-
 		for c, i in cubePositions {
 			model := glm.MATRIX4F32_IDENTITY
-			model =
-				glm.matrix4_rotate_f32(glm.to_radians(f32(time * 10)), Vec3{1, 0.3, 0.5}) * model
+			model = glm.matrix4_rotate_f32(glm.to_radians(ctx.time * 10), Vec3{1, 0, 0}) * model
 			model = glm.matrix4_translate_f32(c) * model
 			shader_set(&shader, "model", &model)
 			gl.DrawArrays(gl.TRIANGLES, 0, 36)

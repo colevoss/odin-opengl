@@ -1,6 +1,8 @@
 package main
 
+import "base:runtime"
 import "core:fmt"
+import "core:log"
 import "core:strings"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
@@ -29,6 +31,9 @@ window_init :: proc(w: ^Window) -> bool {
 	glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, GL_MAJOR_VERSION)
 	glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, GL_MINOR_VERSION)
 
+	glfw.WindowHint(glfw.DOUBLEBUFFER, gl.TRUE)
+	//glfw.WindowHint(glfw.DECORATED, gl.FALSE)
+
 	window_handle := glfw.CreateWindow(
 		i32(w.width),
 		i32(w.height),
@@ -50,6 +55,26 @@ window_init :: proc(w: ^Window) -> bool {
 	// Load OpenGL function pointers with the specficed OpenGL major and minor version.
 	gl.load_up_to(GL_MAJOR_VERSION, GL_MINOR_VERSION, glfw.gl_set_proc_address)
 
+	glfw.SetErrorCallback(error_cb)
+	//glfw.SetKeyCallback(
+	//	window_handle,
+	//	proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
+	//		context = runtime.default_context()
+	//		fmt.printfln("%v", action)
+	//	},
+	//)
+
+	//input: Input
+
+	//glfw.SetCursorPosCallback(
+	//	window_handle,
+	//	proc "c" (window: glfw.WindowHandle, xpos, ypos: f64) {
+	//		context = runtime.default_context()
+	//		//input_update_mouse(&input, Vec2{f32(xpos), f32(ypos)})
+	//		fmt.printfln("x: %v", w)
+	//	},
+	//)
+
 	return true
 }
 
@@ -65,4 +90,9 @@ window_destory :: proc(w: ^Window) {
 window_clear :: proc(color: Vec4) {
 	gl.ClearColor(color.r, color.g, color.b, color.a)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+}
+
+error_cb :: proc "c" (error: i32, description: cstring) {
+	context = runtime.default_context()
+	log.error("glfw error: %v", error)
 }
